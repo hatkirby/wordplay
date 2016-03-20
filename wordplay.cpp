@@ -82,6 +82,6 @@ int main(int argc, char** argv)
 
     std::cout << "Waiting" << std::endl;
     
-    sleep(60 * 60);
+    sleep(60 * 60 * 3);
   }
 }
