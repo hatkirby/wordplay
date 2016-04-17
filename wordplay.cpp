@@ -24,7 +24,7 @@ int main(int argc, char** argv)
   for (;;)
   {
     // Generate the most amazing jokes you've ever heard
-    auto adjq = database.adjectives().has_pronunciation(true).has_synonyms(true).random(true).limit(1).run();
+    auto adjq = database.adjectives().has_rhyming_noun().has_synonyms().random().limit(1).run();
     if (adjq.empty())
     {
       continue;
@@ -32,7 +32,7 @@ int main(int argc, char** argv)
     
     verbly::adjective rhmadj = adjq.front();
     
-    auto nounq = database.nouns().rhymes_with(rhmadj).not_derived_from(rhmadj).is_hyponym(true).random(true).limit(1).run();
+    auto nounq = database.nouns().rhymes_with(rhmadj).is_hyponym().random().limit(1).run();
     if (nounq.empty())
     {
       continue;
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     
     verbly::noun rhmnoun = nounq.front();
     
-    auto hypq = database.nouns().hypernym_of(rhmnoun).random(true).limit(1).run();
+    auto hypq = database.nouns().hypernym_of(rhmnoun).random().limit(1).run();
     if (hypq.empty())
     {
       continue;
@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     
     verbly::noun hyp = hypq.front();
     
-    auto synq = database.adjectives().synonym_of(rhmadj).random(true).limit(1).run();
+    auto synq = database.adjectives().synonym_of(rhmadj).random().limit(1).run();
     if (synq.empty())
     {
       continue;
