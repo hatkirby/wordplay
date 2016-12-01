@@ -3,21 +3,22 @@
 #include <iostream>
 #include <list>
 #include <algorithm>
-#include <twitcurl.h>
+#include <twitter.h>
 #include <verbly.h>
-#include <unistd.h>
+#include <chrono>
+#include <thread>
 
 int main(int argc, char** argv)
 {
-  srand(time(NULL));
-  
   YAML::Node config = YAML::LoadFile("config.yml");
     
-  twitCurl twitter;
-  twitter.getOAuth().setConsumerKey(config["consumer_key"].as<std::string>());
-  twitter.getOAuth().setConsumerSecret(config["consumer_secret"].as<std::string>());
-  twitter.getOAuth().setOAuthTokenKey(config["access_key"].as<std::string>());
-  twitter.getOAuth().setOAuthTokenSecret(config["access_secret"].as<std::string>());
+  twitter::auth auth;
+  auth.setConsumerKey(config["consumer_key"].as<std::string>());
+  auth.setConsumerSecret(config["consumer_secret"].as<std::string>());
+  auth.setAccessKey(config["access_key"].as<std::string>());
+  auth.setAccessSecret(config["access_secret"].as<std::string>());
+  
+  twitter::client client(auth);
   
   verbly::data database("data.sqlite3");
   
@@ -71,18 +72,18 @@ int main(int argc, char** argv)
       result << "A " << rhmadj.base_form() << " " << rhmnoun.base_form() << "!" << std::endl;
     }
     
-    std::string replyMsg;
-    if (twitter.statusUpdate(result.str()))
+    try
     {
-      twitter.getLastWebResponse(replyMsg);
-      std::cout << "Twitter message: " << replyMsg << std::endl;
-    } else {
-      twitter.getLastCurlError(replyMsg);
-      std::cout << "Curl error: " << replyMsg << std::endl;
+      client.updateStatus(result.str());
+      
+      std::cout << "Tweeted!" << std::endl;
+    } catch (const twitter::twitter_error& e)
+    {
+      std::cout << "Twitter error: " << e.what() << std::endl;
     }
 
-    std::cout << "Waiting" << std::endl;
+    std::cout << "Waiting..." << std::endl;
     
-    sleep(60 * 60 * 3);
+    std::this_thread::sleep_for(std::chrono::hours(1));
   }
 }
