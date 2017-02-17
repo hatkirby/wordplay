@@ -18,71 +18,66 @@ int main(int argc, char** argv)
 
   std::string configfile(argv[1]);
   YAML::Node config = YAML::LoadFile(configfile);
-    
+
   twitter::auth auth;
   auth.setConsumerKey(config["consumer_key"].as<std::string>());
   auth.setConsumerSecret(config["consumer_secret"].as<std::string>());
   auth.setAccessKey(config["access_key"].as<std::string>());
   auth.setAccessSecret(config["access_secret"].as<std::string>());
-  
+
   twitter::client client(auth);
-  
-  verbly::data database(config["verbly_datafile"].as<std::string>());
-  
+
+  verbly::database database(config["verbly_datafile"].as<std::string>());
+
+  // Blacklist ethnic slurs
+  verbly::filter cleanFilter =
+    !(verbly::word::usageDomains %= (verbly::notion::wnid == 106718862));
+
+  verbly::filter nounFilter =
+    cleanFilter
+    && (verbly::notion::partOfSpeech == verbly::part_of_speech::noun)
+    && (verbly::notion::hypernyms %= cleanFilter);
+
+  verbly::query<verbly::word> adjectiveQuery = database.words(
+    (verbly::notion::partOfSpeech == verbly::part_of_speech::adjective)
+    && (verbly::pronunciation::rhymes %= nounFilter)
+    && (verbly::word::synonyms));
+
   for (;;)
   {
-    // Generate the most amazing jokes you've ever heard
-    auto adjq = database.adjectives().has_rhyming_noun().has_synonyms().random().limit(1).run();
-    if (adjq.empty())
-    {
-      continue;
-    }
-    
-    verbly::adjective rhmadj = adjq.front();
-    
-    auto nounq = database.nouns().rhymes_with(rhmadj).is_hyponym().random().limit(1).run();
-    if (nounq.empty())
-    {
-      continue;
-    }
-    
-    verbly::noun rhmnoun = nounq.front();
-    
-    auto hypq = database.nouns().hypernym_of(rhmnoun).random().limit(1).run();
-    if (hypq.empty())
-    {
-      continue;
-    }
-    
-    verbly::noun hyp = hypq.front();
-    
-    auto synq = database.adjectives().synonym_of(rhmadj).random().limit(1).run();
-    if (synq.empty())
-    {
-      continue;
-    }
-    
-    verbly::adjective syn = synq.front();
-    
-    std::stringstream result;
-    if (syn.starts_with_vowel_sound())
-    {
-      result << "What do you call an " << syn.base_form() << " " << hyp.base_form() << "?" << std::endl;
-    } else {
-      result << "What do you call a " << syn.base_form() << " " << hyp.base_form() << "?" << std::endl;
-    }
-    
-    if (rhmadj.starts_with_vowel_sound())
-    {
-      result << "An " << rhmadj.base_form() << " " << rhmnoun.base_form() << "!" << std::endl;
-    } else {
-      result << "A " << rhmadj.base_form() << " " << rhmnoun.base_form() << "!" << std::endl;
-    }
-    
+    verbly::word adjective = adjectiveQuery.first();
+
+    verbly::word noun = database.words(
+      nounFilter
+      && (verbly::pronunciation::rhymes %= adjective)).first();
+
+    verbly::word hypernym = database.words(
+      cleanFilter
+      && (verbly::notion::hyponyms %= noun)).first();
+
+    verbly::word synonym = database.words(
+      (verbly::word::synonyms %= adjective)).first();
+
+    verbly::token action = verbly::token::separator("\n", {
+      verbly::token::punctuation("?", {
+        "What do you call",
+        verbly::token::definiteArticle(synonym),
+        hypernym
+      }),
+      verbly::token::capitalize(
+        verbly::token::punctuation("!", {
+          verbly::token::definiteArticle(adjective),
+          noun
+        }))
+    });
+
+    std::string result = action.compile();
+    std::cout << result << std::endl;
+
     try
     {
-      client.updateStatus(result.str());
-      
+      client.updateStatus(result);
+
       std::cout << "Tweeted!" << std::endl;
     } catch (const twitter::twitter_error& e)
     {
@@ -90,7 +85,10 @@ int main(int argc, char** argv)
     }
 
     std::cout << "Waiting..." << std::endl;
-    
+
     std::this_thread::sleep_for(std::chrono::hours(1));
+
+    std::cout << std::endl;
   }
 }
+
