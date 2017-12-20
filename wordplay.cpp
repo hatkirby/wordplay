@@ -61,12 +61,12 @@ int main(int argc, char** argv)
     verbly::token action = verbly::token::separator("\n", {
       verbly::token::punctuation("?", {
         "What do you call",
-        verbly::token::definiteArticle(synonym),
+        verbly::token::indefiniteArticle(synonym),
         hypernym
       }),
-      verbly::token::capitalize(
+      verbly::token::capitalize(verbly::token::casing::capitalize,
         verbly::token::punctuation("!", {
-          verbly::token::definiteArticle(adjective),
+          verbly::token::indefiniteArticle(adjective),
           noun
         }))
     });
