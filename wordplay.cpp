@@ -29,9 +29,10 @@ int main(int argc, char** argv)
 
   verbly::database database(config["verbly_datafile"].as<std::string>());
 
-  // Blacklist ethnic slurs
+  // Blacklist some stuff
   verbly::filter cleanFilter =
-    !(verbly::word::usageDomains %= (verbly::notion::wnid == 106718862));
+    !(verbly::word::usageDomains %= (verbly::notion::wnid == 106718862)) // ethnic slurs
+    && !(verbly::notion::wnid == 110630093); // "spastic"
 
   verbly::filter nounFilter =
     cleanFilter
