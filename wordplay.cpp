@@ -3,7 +3,7 @@
 #include <iostream>
 #include <list>
 #include <algorithm>
-#include <twitter.h>
+#include <mastodonpp/mastodonpp.hpp>
 #include <verbly.h>
 #include <chrono>
 #include <thread>
@@ -19,13 +19,10 @@ int main(int argc, char** argv)
   std::string configfile(argv[1]);
   YAML::Node config = YAML::LoadFile(configfile);
 
-  twitter::auth auth;
-  auth.setConsumerKey(config["consumer_key"].as<std::string>());
-  auth.setConsumerSecret(config["consumer_secret"].as<std::string>());
-  auth.setAccessKey(config["access_key"].as<std::string>());
-  auth.setAccessSecret(config["access_secret"].as<std::string>());
-
-  twitter::client client(auth);
+  mastodonpp::Instance instance{
+    config["mastodon_instance"].as<std::string>(),
+    config["mastodon_token"].as<std::string>()};
+  mastodonpp::Connection connection{instance};
 
   verbly::database database(config["verbly_datafile"].as<std::string>());
 
@@ -75,14 +72,19 @@ int main(int argc, char** argv)
     std::string result = action.compile();
     std::cout << result << std::endl;
 
-    try
+    const mastodonpp::parametermap parameters{{"status", result}};
+    auto answer{connection.post(mastodonpp::API::v1::statuses, parameters)};
+    if (!answer)
     {
-      client.updateStatus(result);
-
-      std::cout << "Tweeted!" << std::endl;
-    } catch (const twitter::twitter_error& e)
-    {
-      std::cout << "Twitter error: " << e.what() << std::endl;
+      if (answer.curl_error_code == 0)
+      {
+        std::cout << "HTTP status: " << answer.http_status << std::endl;
+      }
+      else
+      {
+        std::cout << "libcurl error " << std::to_string(answer.curl_error_code)
+             << ": " << answer.error_message << std::endl;
+      }
     }
 
     std::cout << "Waiting..." << std::endl;
