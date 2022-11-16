@@ -89,7 +89,7 @@ int main(int argc, char** argv)
 
     std::cout << "Waiting..." << std::endl;
 
-    std::this_thread::sleep_for(std::chrono::hours(1));
+    std::this_thread::sleep_for(std::chrono::hours(2));
 
     std::cout << std::endl;
   }
